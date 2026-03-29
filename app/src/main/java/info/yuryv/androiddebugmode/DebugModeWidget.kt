@@ -29,10 +29,20 @@ import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.layout.wrapContentWidth
+import androidx.glance.semantics.semantics
+import androidx.glance.semantics.testTag
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+
+internal object WidgetTestTags {
+    const val USB_ROW = "usb_row"
+    const val WIFI_ROW = "wifi_row"
+    const val USB_CHIP = "usb_chip"
+    const val WIFI_CHIP = "wifi_chip"
+    const val REFRESH_BTN = "btn_refresh"
+}
 
 class DebugModeWidget : GlanceAppWidget() {
 
@@ -56,7 +66,7 @@ class DebugModeWidget : GlanceAppWidget() {
         }
     }
 
-    private fun readSetting(context: Context, key: String): Boolean = try {
+    internal fun readSetting(context: Context, key: String): Boolean = try {
         Settings.Global.getInt(context.contentResolver, key, 0) != 0
     } catch (_: SecurityException) {
         false
@@ -64,7 +74,7 @@ class DebugModeWidget : GlanceAppWidget() {
 }
 
 @Composable
-private fun WidgetContent(
+internal fun WidgetContent(
     usbEnabled: Boolean,
     wifiEnabled: Boolean,
     showWifiRow: Boolean,
@@ -75,7 +85,6 @@ private fun WidgetContent(
             .background(GlanceTheme.colors.widgetBackground)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        // Header row
         Row(
             modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -95,6 +104,7 @@ private fun WidgetContent(
                 colorFilter = androidx.glance.ColorFilter.tint(GlanceTheme.colors.onSurface),
                 modifier = GlanceModifier
                     .size(20.dp)
+                    .semantics { testTag = WidgetTestTags.REFRESH_BTN }
                     .clickable(actionRunCallback<RefreshWidgetAction>()),
             )
         }
@@ -106,6 +116,8 @@ private fun WidgetContent(
             iconContentDesc = "USB debug",
             label = "USB Debugging",
             isEnabled = usbEnabled,
+            rowTestTag = WidgetTestTags.USB_ROW,
+            chipTestTag = WidgetTestTags.USB_CHIP,
         )
 
         if (showWifiRow) {
@@ -115,6 +127,8 @@ private fun WidgetContent(
                 iconContentDesc = "Wireless debug",
                 label = "Wireless Debugging",
                 isEnabled = wifiEnabled,
+                rowTestTag = WidgetTestTags.WIFI_ROW,
+                chipTestTag = WidgetTestTags.WIFI_CHIP,
             )
         }
     }
@@ -126,6 +140,8 @@ private fun DebugStatusRow(
     iconContentDesc: String,
     label: String,
     isEnabled: Boolean,
+    rowTestTag: String,
+    chipTestTag: String,
 ) {
     val chipBackground = if (isEnabled) {
         ColorProvider(Color(0xFF388E3C))
@@ -136,6 +152,7 @@ private fun DebugStatusRow(
     Row(
         modifier = GlanceModifier
             .fillMaxWidth()
+            .semantics { testTag = rowTestTag }
             .clickable(actionRunCallback<OpenSettingsAction>())
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -170,6 +187,7 @@ private fun DebugStatusRow(
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                 ),
+                modifier = GlanceModifier.semantics { testTag = chipTestTag },
             )
         }
     }

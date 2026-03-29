@@ -38,6 +38,12 @@ android {
       signingConfig = signingConfigs.findByName("release")
     }
   }
+  testOptions {
+    unitTests {
+      isIncludeAndroidResources = true
+    }
+  }
+
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
@@ -53,6 +59,10 @@ dependencies {
   implementation(libs.androidx.glance.appwidget)
   implementation(libs.androidx.glance.material3)
   testImplementation(libs.junit)
+  testImplementation(libs.robolectric)
+  testImplementation(libs.androidx.test.core.ktx)
+  testImplementation(libs.androidx.glance.testing)
+  testImplementation(libs.androidx.glance.appwidget.testing)
   androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.androidx.espresso.core)
 }
