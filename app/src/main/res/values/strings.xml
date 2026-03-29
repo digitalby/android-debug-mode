@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">AndroidDebugMode</string>
+    <string name="app_name">Debug Mode</string>
+    <string name="widget_description">Shows USB and wireless ADB debug status</string>
 </resources>
