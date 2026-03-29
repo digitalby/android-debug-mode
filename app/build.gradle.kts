@@ -19,10 +19,23 @@ android {
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
+  signingConfigs {
+    val keystorePath = System.getenv("KEYSTORE_PATH")
+    if (keystorePath != null) {
+      create("release") {
+        storeFile = file(keystorePath)
+        storePassword = System.getenv("STORE_PASSWORD")
+        keyAlias = System.getenv("KEY_ALIAS")
+        keyPassword = System.getenv("KEY_PASSWORD")
+      }
+    }
+  }
+
   buildTypes {
     release {
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+      signingConfig = signingConfigs.findByName("release")
     }
   }
   compileOptions {
