@@ -2,13 +2,14 @@
 
 A minimal Android home screen widget that shows USB and wireless ADB debugging status at a glance and taps through to Developer Options.
 
-![CI](https://github.com/digitalby/AndroidDebugMode/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/digitalby/android-debug-mode/actions/workflows/ci.yml/badge.svg)
 
 ## What it does
 
 - Shows whether **USB Debugging** is on or off
 - Shows whether **Wireless Debugging** is on or off (Android 11+ only)
 - Tapping either row opens **Developer Options** directly
+- **Running Services** shortcut opens the Running Services screen directly
 - Refresh button re-reads current state without navigating away
 
 The app has no launcher activity. It lives entirely as a home screen widget.
@@ -21,6 +22,8 @@ The app has no launcher activity. It lives entirely as a home screen widget.
 > The app reads `Settings.Global` to display state but does not modify any settings. Toggling requires navigating to Developer Options manually.
 
 ## Installation
+
+**From F-Droid:** coming soon.
 
 **From a release:**
 

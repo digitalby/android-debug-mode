@@ -1,0 +1,15 @@
+Debug Mode Widget is a minimal home screen widget that shows your Android debug settings at a glance — no need to dig through menus.
+
+Place the widget on your home screen to instantly see:
+
+• USB Debugging — on or off
+• Wireless Debugging — on or off (Android 11+ only)
+• Running Services shortcut — opens the Running Services screen directly
+
+Tap any status row to jump straight to Developer Options. Tap Running Services to open that screen without navigating through menus. Tap the refresh button to re-read the current state without leaving your home screen.
+
+The app has no launcher icon. It lives entirely as a home screen widget — no background processes, no notifications, no internet permission, no tracking of any kind.
+
+To use: long-press your home screen, choose Widgets, find Debug Mode, and drag it to place.
+
+Source code: https://github.com/digitalby/android-debug-mode

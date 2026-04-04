@@ -1,0 +1,1 @@
+Initial release. Shows USB debugging and wireless debugging (Android 11+) status on your home screen. Tap any row to open Developer Options.

@@ -1,0 +1,1 @@
+Home screen widget showing USB and wireless ADB debug status at a glance.

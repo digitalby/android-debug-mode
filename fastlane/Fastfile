@@ -1,0 +1,27 @@
+default_platform(:android)
+
+platform :android do
+  desc "Run lint and unit tests"
+  lane :test do
+    gradle(task: "lintDebug")
+    gradle(task: "testDebugUnitTest")
+  end
+
+  desc "Build a debug APK"
+  lane :build_debug do
+    gradle(task: "assembleDebug")
+  end
+
+  desc "Build a signed release APK (requires KEYSTORE_PATH, STORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD env vars)"
+  lane :build_release do
+    gradle(
+      task: "assembleRelease",
+      properties: {
+        "android.injected.signing.store.file" => ENV["KEYSTORE_PATH"],
+        "android.injected.signing.store.password" => ENV["STORE_PASSWORD"],
+        "android.injected.signing.key.alias" => ENV["KEY_ALIAS"],
+        "android.injected.signing.key.password" => ENV["KEY_PASSWORD"],
+      }
+    )
+  end
+end
