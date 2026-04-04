@@ -42,6 +42,7 @@ internal object WidgetTestTags {
     const val USB_CHIP = "usb_chip"
     const val WIFI_CHIP = "wifi_chip"
     const val REFRESH_BTN = "btn_refresh"
+    const val RUNNING_SERVICES_ROW = "running_services_row"
 }
 
 class DebugModeWidget : GlanceAppWidget() {
@@ -131,6 +132,36 @@ internal fun WidgetContent(
                 chipTestTag = WidgetTestTags.WIFI_CHIP,
             )
         }
+
+        Spacer(modifier = GlanceModifier.height(4.dp))
+        RunningServicesRow()
+    }
+}
+
+@Composable
+private fun RunningServicesRow() {
+    Row(
+        modifier = GlanceModifier
+            .fillMaxWidth()
+            .semantics { testTag = WidgetTestTags.RUNNING_SERVICES_ROW }
+            .clickable(actionRunCallback<OpenRunningServicesAction>())
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Image(
+            provider = ImageProvider(R.drawable.ic_running_services),
+            contentDescription = "Running services",
+            colorFilter = androidx.glance.ColorFilter.tint(GlanceTheme.colors.onSurface),
+            modifier = GlanceModifier.size(20.dp),
+        )
+        Spacer(modifier = GlanceModifier.width(6.dp))
+        Text(
+            text = "Running Services",
+            style = TextStyle(
+                color = GlanceTheme.colors.onSurface,
+                fontSize = 12.sp,
+            ),
+        )
     }
 }
 

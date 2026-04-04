@@ -81,4 +81,20 @@ class WidgetContentTest {
         }
         onNode(hasTestTag(WidgetTestTags.REFRESH_BTN)).assertExists()
     }
+
+    @Test
+    fun running_services_row_always_present() = runGlanceAppWidgetUnitTest {
+        provideComposable {
+            WidgetContent(usbEnabled = false, wifiEnabled = false, showWifiRow = false)
+        }
+        onNode(hasTestTag(WidgetTestTags.RUNNING_SERVICES_ROW)).assertExists()
+    }
+
+    @Test
+    fun running_services_row_present_when_wifi_row_shown() = runGlanceAppWidgetUnitTest {
+        provideComposable {
+            WidgetContent(usbEnabled = true, wifiEnabled = true, showWifiRow = true)
+        }
+        onNode(hasTestTag(WidgetTestTags.RUNNING_SERVICES_ROW)).assertExists()
+    }
 }
