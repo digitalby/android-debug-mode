@@ -60,16 +60,24 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Load signing secrets from 1Password
+        uses: 1password/load-secrets-action@v2
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          KEYSTORE_BASE64: op://CI/Android Release Keystore/base64
+          STORE_PASSWORD: op://CI/Android Release Keystore/store-password
+          KEY_ALIAS: op://CI/Android Release Keystore/key-alias
+          KEY_PASSWORD: op://CI/Android Release Keystore/key-password
+
       - name: Decode keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "${{ github.workspace }}/release.jks"
+        run: echo "$KEYSTORE_BASE64" | base64 --decode > "${{ github.workspace }}/release.jks"
 
       - name: Build release APK
         run: ./gradlew assembleRelease
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/release.jks
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
