@@ -66,10 +66,10 @@ jobs:
           export-env: true
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-          KEYSTORE_BASE64: op://CI/Android Release Keystore/base64
-          STORE_PASSWORD: op://CI/Android Release Keystore/store-password
-          KEY_ALIAS: op://CI/Android Release Keystore/key-alias
-          KEY_PASSWORD: op://CI/Android Release Keystore/key-password
+          KEYSTORE_BASE64: op://GitHub OSS/Android Release Keystore/base64
+          STORE_PASSWORD: op://GitHub OSS/Android Release Keystore/store-password
+          KEY_ALIAS: op://GitHub OSS/Android Release Keystore/key-alias
+          KEY_PASSWORD: op://GitHub OSS/Android Release Keystore/key-password
 
       - name: Decode keystore
         run: echo "$KEYSTORE_BASE64" | base64 --decode > "${{ github.workspace }}/release.jks"
