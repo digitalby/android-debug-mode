@@ -1,0 +1,45 @@
+name: Generate Icons
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/src/main/res/drawable/**'
+      - 'app/src/main/res/drawable-v24/**'
+      - 'scripts/generate_icons.py'
+      - 'scripts/requirements.txt'
+
+jobs:
+  generate:
+    name: Rasterise & Commit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Generate icons
+        run: python scripts/generate_icons.py
+
+      - name: Commit generated assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add \
+            app/src/main/res/mipmap-mdpi/ \
+            app/src/main/res/mipmap-hdpi/ \
+            app/src/main/res/mipmap-xhdpi/ \
+            app/src/main/res/mipmap-xxhdpi/ \
+            app/src/main/res/mipmap-xxxhdpi/ \
+            fastlane/metadata/android/en-US/images/
+          git diff --cached --quiet || git commit -m "chore: regenerate raster icons from vector sources"
+          git push
