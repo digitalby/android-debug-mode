@@ -65,4 +65,5 @@ dependencies {
   testImplementation(libs.androidx.glance.appwidget.testing)
   androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.androidx.espresso.core)
+  androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
 }
