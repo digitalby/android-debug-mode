@@ -1,8 +1,5 @@
 package info.yuryv.androiddebugmode.screenshot
 
-import android.app.WallpaperManager
-import android.graphics.Bitmap
-import android.graphics.Color
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
@@ -17,23 +14,15 @@ class WidgetScreenshotTest {
 
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val device = UiDevice.getInstance(instrumentation)
-    private val context = instrumentation.context
 
     @Test
     fun placeWidgetAndCaptureScreenshot() {
-        setWallpaper()
         pressHomeAndWait()
         openWidgetPicker()
         placeWidget()
         pressHomeAndWait()
         waitForGlanceRender()
         takeScreenshot()
-    }
-
-    private fun setWallpaper() {
-        val bmp = Bitmap.createBitmap(device.displayWidth, device.displayHeight, Bitmap.Config.ARGB_8888)
-        bmp.eraseColor(Color.parseColor("#1A1A2E"))
-        WallpaperManager.getInstance(context).setBitmap(bmp)
     }
 
     private fun pressHomeAndWait() {
