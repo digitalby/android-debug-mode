@@ -54,6 +54,16 @@ jobs:
             adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             adb shell am instrument -w -e class info.yuryv.androiddebugmode.screenshot.WidgetScreenshotTest info.yuryv.androiddebugmode.test/androidx.test.runner.AndroidJUnitRunner
             adb pull /sdcard/Pictures/01_widget.png fastlane/metadata/android/en-US/images/phoneScreenshots/01_widget.png
+            mkdir -p diagnostics
+            adb pull /sdcard/Pictures/ diagnostics/ || true
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot-diagnostics
+          path: diagnostics/
+          if-no-files-found: warn
 
       - name: Commit screenshot
         run: |
