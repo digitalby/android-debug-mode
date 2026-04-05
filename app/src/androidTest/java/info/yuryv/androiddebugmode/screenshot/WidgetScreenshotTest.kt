@@ -46,15 +46,16 @@ class WidgetScreenshotTest {
         widgetsBtn.click()
         device.waitForIdle(2_000)
         dumpHierarchy("after_widgets_click")
+        captureScreen("picker_open")
     }
 
     private fun placeWidget() {
         // The widget picker is a RecyclerView — scroll until the "Debug Mode" app section
         // is visible, then drag the widget tile to the home screen.
         @Suppress("DEPRECATION")
-        val scroller = UiScrollable(
-            UiSelector().scrollable(true).packageName("com.android.launcher3")
-        )
+        val scroller = UiScrollable(UiSelector().scrollable(true))
+        @Suppress("DEPRECATION")
+        scroller.setAsVerticalList()
         @Suppress("DEPRECATION")
         val found = try {
             scroller.scrollIntoView(UiSelector().textContains("Debug Mode"))
@@ -62,17 +63,18 @@ class WidgetScreenshotTest {
             false
         }
         dumpHierarchy("after_scroll")
+        captureScreen("after_scroll")
 
         if (!found) {
-            // Fallback: scroll down manually a few times and wait
-            val scrollable = device.findObject(
-                By.scrollable(true).pkg("com.android.launcher3")
-            )
-            repeat(3) {
-                scrollable?.scroll(Direction.DOWN, 0.5f)
-                device.waitForIdle(500)
+            // Fallback: scroll down manually on any scrollable in view
+            device.findObjects(By.scrollable(true)).forEach { scrollable ->
+                repeat(5) {
+                    scrollable.scroll(Direction.DOWN, 0.4f)
+                    device.waitForIdle(300)
+                }
             }
             dumpHierarchy("after_manual_scroll")
+            captureScreen("after_manual_scroll")
         }
 
         val appSection = device.wait(
@@ -134,7 +136,16 @@ class WidgetScreenshotTest {
     /** Dumps the current window hierarchy for CI artifact analysis. */
     private fun dumpHierarchy(tag: String) {
         runCatching {
-            device.dumpWindowHierarchy(File("/sdcard/Pictures/hierarchy_$tag.xml"))
+            val dir = File("/sdcard/Pictures").also { it.mkdirs() }
+            device.dumpWindowHierarchy(File(dir, "hierarchy_$tag.xml"))
+        }
+    }
+
+    /** Captures a screenshot for CI artifact analysis. */
+    private fun captureScreen(tag: String) {
+        runCatching {
+            val dir = File("/sdcard/Pictures").also { it.mkdirs() }
+            device.takeScreenshot(File(dir, "screen_$tag.png"), 0.5f, 80)
         }
     }
 
