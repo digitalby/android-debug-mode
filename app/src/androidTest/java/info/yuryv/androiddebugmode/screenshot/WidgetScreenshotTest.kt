@@ -42,7 +42,15 @@ class WidgetScreenshotTest {
     }
 
     private fun openWidgetPicker() {
-        device.longClick(device.displayWidth / 2, device.displayHeight / 3)
+        // Long-press the Launcher3 workspace to open the home screen edit panel
+        val workspace = device.wait(
+            Until.findObject(By.res("com.android.launcher3:id/workspace")),
+            3_000,
+        ) ?: device.wait(
+            Until.findObject(By.pkg("com.android.launcher3").clazz("android.view.ViewGroup")),
+            3_000,
+        ) ?: error("Could not find launcher home screen to long-press")
+        workspace.longClick()
         device.wait(Until.hasObject(By.text("Widgets")), 4_000)
         device.findObject(By.text("Widgets")).click()
         device.waitForIdle(2_000)
