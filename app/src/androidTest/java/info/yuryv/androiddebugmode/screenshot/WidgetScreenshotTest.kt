@@ -1,5 +1,6 @@
 package info.yuryv.androiddebugmode.screenshot
 
+import android.graphics.Point
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -131,14 +132,19 @@ class WidgetScreenshotTest {
         captureScreen("found_widget_tile")
         Log.d(TAG, "WIDGET_TILE: cls=${widgetTile.className} bounds=${widgetTile.visibleBounds}")
 
-        val bounds = widgetTile.visibleBounds
+        // Drop in the vertical middle of the screen — clearly below the Google search
+        // bar (top ~8% of display) and well within the empty home-screen grid area.
+        // UiObject2.drag() anchors the gesture to the object centre through the
+        // accessibility tree, which is more reliable than raw coordinate injection.
         val dropX = device.displayWidth / 2
-        // Drop near the top of the screen so the gesture clears the picker area.
-        // The picker occupies most of the screen; the drag must travel far enough
-        // upward for Launcher3 to detect placement on the home screen beneath.
-        val dropY = device.displayHeight / 8
-        device.drag(bounds.centerX(), bounds.centerY(), dropX, dropY, 120)
-        device.waitForIdle(3_000)
+        val dropY = device.displayHeight / 3   // ≈ 800 px on Pixel 6, grid rows 1-2
+        Log.d(TAG, "DRAG: from=${widgetTile.visibleBounds} to=($dropX,$dropY)")
+        widgetTile.drag(Point(dropX, dropY))
+        Thread.sleep(3_000)
+
+        captureScreen("after_drag")
+        logHierarchy("after_drag")
+        logAllTexts("after_drag")
     }
 
     private fun waitForGlanceRender() {
