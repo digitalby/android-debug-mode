@@ -4,7 +4,6 @@ import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
-import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiScrollable
 import androidx.test.uiautomator.UiSelector
@@ -46,21 +45,21 @@ class WidgetScreenshotTest {
         longPressHomeScreen()
         captureScreen("after_long_press")
 
-        // The popup items are TextViews (not clickable themselves); their parent
-        // container holds the click listener. Find the clickable ancestor first;
-        // fall back to a raw coordinate tap, which propagates through the hierarchy.
-        val widgetsItem = device.wait(
-            Until.findObject(By.clickable(true).hasDescendant(By.text("Widgets"))),
-            5_000,
-        ) ?: device.wait(Until.findObject(By.text("Widgets")), 5_000)
-            ?: error("'Widgets' button not found after long-pressing the home screen")
+        // The popup menu has a clickable FrameLayout container for all 3 items. Using
+        // By.clickable(true).hasDescendant(By.text("Widgets")) returns the outermost
+        // clickable ancestor (the container), not the specific row. Sending a raw
+        // "input tap" via shell at the TEXT element's centre propagates naturally
+        // through the view hierarchy to the correct OptionItem click handler.
+        val widgetsText = device.wait(Until.findObject(By.text("Widgets").pkg(LAUNCHER_PKG)), 5_000)
+            ?: error("'Widgets' text not found in popup after long-pressing the home screen")
 
-        val bounds = widgetsItem.visibleBounds
-        Log.d(TAG, "CLICK_TARGET: cls=${widgetsItem.className} pkg=${widgetsItem.applicationPackage} bounds=$bounds clickable=${widgetsItem.isClickable}")
+        val bounds = widgetsText.visibleBounds
+        Log.d(TAG, "CLICK_TARGET: cls=${widgetsText.className} pkg=${widgetsText.applicationPackage} bounds=$bounds")
         captureScreen("before_click")
-        logAllTexts("before_click")
 
-        device.click(bounds.centerX(), bounds.centerY())
+        // Use shell input tap: goes through the native input pipeline and is delivered
+        // to the window under the touch coordinates, selecting the correct row.
+        shell("input tap ${bounds.centerX()} ${bounds.centerY()}")
         captureScreen("after_click_immediate")
 
         // The "Serial console enabled" persistent notification on emulators can expand
