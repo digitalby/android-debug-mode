@@ -6,11 +6,16 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.UiScrollable
+import androidx.test.uiautomator.UiSelector
 import androidx.test.uiautomator.Until
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.ByteArrayOutputStream
 import java.io.File
+
+private const val LAUNCHER_PKG = "com.android.launcher3"
+private const val TAG = "WDIAG"
 
 @RunWith(AndroidJUnit4::class)
 class WidgetScreenshotTest {
@@ -44,7 +49,20 @@ class WidgetScreenshotTest {
         val widgetsBtn = device.wait(Until.findObject(By.text("Widgets")), 5_000)
             ?: error("'Widgets' button not found after long-pressing the home screen")
         widgetsBtn.click()
-        device.waitForIdle(2_000)
+
+        // Wait for the Launcher3 widget picker to be in the foreground —
+        // not just for idle, because a heads-up notification may appear
+        // and delay the picker transition.
+        val pickerVisible = device.wait(
+            Until.hasObject(By.pkg(LAUNCHER_PKG).scrollable(true)),
+            8_000,
+        )
+
+        // If a notification shade or other overlay opened on top, close it.
+        if (!pickerVisible) {
+            device.pressBack()
+            device.waitForIdle(1_000)
+        }
 
         captureScreen("after_widgets_click")
         logHierarchy("after_widgets_click")
@@ -52,13 +70,28 @@ class WidgetScreenshotTest {
     }
 
     private fun placeWidget() {
-        val target = scrollUntilVisible("Debug Mode", maxSwipes = 15)
-            ?: run {
-                captureScreen("not_found")
-                logHierarchy("not_found")
-                logAllTexts("not_found")
-                error("App section 'Debug Mode' not found in widget picker after scrolling")
-            }
+        // Use UiScrollable so the scroll stays inside the Launcher3 RecyclerView
+        // and cannot accidentally dismiss the picker or open the app drawer.
+        val picker = UiScrollable(
+            UiSelector()
+                .packageName(LAUNCHER_PKG)
+                .scrollable(true),
+        )
+        picker.setMaxSearchSwipes(25)
+
+        val found = try {
+            picker.scrollIntoView(UiSelector().textContains("Debug Mode"))
+        } catch (_: Exception) {
+            false
+        }
+
+        val target = device.findObject(By.textContains("Debug Mode").pkg(LAUNCHER_PKG))
+        if (target == null) {
+            captureScreen("not_found")
+            logHierarchy("not_found")
+            logAllTexts("not_found")
+            error("App section 'Debug Mode' not found in widget picker (scrollIntoView=$found)")
+        }
 
         captureScreen("found_app_section")
 
@@ -72,7 +105,7 @@ class WidgetScreenshotTest {
         val widgetTile =
             device.wait(Until.findObject(By.descContains("Debug Mode Widget")), 2_000)
                 ?: device.findObject(By.textContains("Debug Mode Widget"))
-                ?: device.findObject(By.textContains("Debug Mode"))
+                ?: device.findObject(By.textContains("Debug Mode").pkg(LAUNCHER_PKG))
                 ?: error("Widget tile not found after expanding app section")
 
         captureScreen("found_widget_tile")
@@ -95,30 +128,7 @@ class WidgetScreenshotTest {
     }
 
     // ---------------------------------------------------------------------------
-    // Scrolling
-    // ---------------------------------------------------------------------------
-
-    private fun scrollUntilVisible(textSubstring: String, maxSwipes: Int): androidx.test.uiautomator.UiObject2? {
-        repeat(maxSwipes) {
-            val found = device.findObject(By.textContains(textSubstring))
-            if (found != null) return found
-
-            val scrollables = device.findObjects(By.scrollable(true))
-            if (scrollables.isEmpty()) {
-                device.swipe(
-                    device.displayWidth / 2, device.displayHeight * 2 / 3,
-                    device.displayWidth / 2, device.displayHeight / 3,
-                    20,
-                )
-            }
-            scrollables.forEach { it.scroll(Direction.DOWN, 0.4f) }
-            device.waitForIdle(400)
-        }
-        return device.findObject(By.textContains(textSubstring))
-    }
-
-    // ---------------------------------------------------------------------------
-    // Diagnostics (visual via takeScreenshot; text via logcat)
+    // Diagnostics
     // ---------------------------------------------------------------------------
 
     private fun longPressHomeScreen() {
@@ -141,10 +151,9 @@ class WidgetScreenshotTest {
         runCatching {
             val bos = ByteArrayOutputStream()
             device.dumpWindowHierarchy(bos)
-            // Split into 4000-char chunks so logcat doesn't truncate.
             val xml = bos.toString("UTF-8")
             xml.chunked(4000).forEachIndexed { i, chunk ->
-                Log.d("WDIAG", "HIERARCHY[$tag][$i]: $chunk")
+                Log.d(TAG, "HIERARCHY[$tag][$i]: $chunk")
             }
         }
     }
@@ -158,7 +167,7 @@ class WidgetScreenshotTest {
                 if (t != null || d != null) "t='$t' d='$d' cls=${el.className} pkg=${el.applicationPackage}"
                 else null
             }
-            Log.d("WDIAG", "TEXTS[$tag]: ${lines.joinToString(" || ")}")
+            Log.d(TAG, "TEXTS[$tag]: ${lines.joinToString(" || ")}")
         }
     }
 
