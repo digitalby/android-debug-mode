@@ -1,0 +1,109 @@
+name: F-Droid Submission Monitor
+
+on:
+  schedule:
+    - cron: '0 10 * * *'  # daily at 10:00 UTC
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Check F-Droid Status
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check GitLab MR status
+        id: mr
+        run: |
+          MR_URL="https://gitlab.com/api/v4/projects/fdroid%2Ffdroiddata/merge_requests/36002"
+          MR=$(curl -sf "$MR_URL")
+          STATE=$(echo "$MR" | jq -r '.state')
+          UPDATED=$(echo "$MR" | jq -r '.updated_at')
+          echo "state=$STATE" >> "$GITHUB_OUTPUT"
+          echo "updated=$UPDATED" >> "$GITHUB_OUTPUT"
+
+          NOTES_URL="${MR_URL}/notes?sort=desc&per_page=5"
+          NOTES=$(curl -sf "$NOTES_URL")
+          LATEST_NOTE_DATE=$(echo "$NOTES" | jq -r '.[0].created_at // empty')
+          LATEST_NOTE_AUTHOR=$(echo "$NOTES" | jq -r '.[0].author.username // empty')
+          LATEST_NOTE_BODY=$(echo "$NOTES" | jq -r '.[0].body // empty' | head -c 500)
+          echo "latest_note_date=$LATEST_NOTE_DATE" >> "$GITHUB_OUTPUT"
+          echo "latest_note_author=$LATEST_NOTE_AUTHOR" >> "$GITHUB_OUTPUT"
+          EOF_MARKER=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          echo "latest_note_body<<$EOF_MARKER" >> "$GITHUB_OUTPUT"
+          echo "$LATEST_NOTE_BODY" >> "$GITHUB_OUTPUT"
+          echo "$EOF_MARKER" >> "$GITHUB_OUTPUT"
+
+      - name: Check F-Droid index
+        id: fdroid
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+            "https://f-droid.org/api/v1/packages/info.yuryv.androiddebugmode")
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "live=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "live=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compare with previous state
+        id: diff
+        run: |
+          mkdir -p .github/state
+          PREV=""
+          if [ -f .github/state/fdroid-monitor.txt ]; then
+            PREV=$(cat .github/state/fdroid-monitor.txt)
+          fi
+          CURRENT="mr=${{ steps.mr.outputs.state }}|note=${{ steps.mr.outputs.latest_note_date }}|live=${{ steps.fdroid.outputs.live }}"
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          if [ "$PREV" = "$CURRENT" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Notify on MR activity
+        if: steps.diff.outputs.changed == 'true' && steps.fdroid.outputs.live != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment 1 --body "**F-Droid monitor** ($(date -u +%Y-%m-%d))
+
+          MR state: \`${{ steps.mr.outputs.state }}\` (updated ${{ steps.mr.outputs.updated }})
+          Latest comment by \`${{ steps.mr.outputs.latest_note_author }}\`:
+          > ${{ steps.mr.outputs.latest_note_body }}
+
+          [View MR](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/36002)"
+
+      - name: App is live on F-Droid
+        if: steps.fdroid.outputs.live == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BADGE='[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/info.yuryv.androiddebugmode/)'
+
+          if ! grep -q "f-droid.org/packages/info.yuryv.androiddebugmode" README.md; then
+            sed -i '/^# /a \\n'"$BADGE"'\n' README.md
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add README.md
+            git commit -m "docs: add F-Droid install badge"
+            git push
+          fi
+
+          gh issue comment 1 --body "The app is now live on F-Droid: https://f-droid.org/packages/info.yuryv.androiddebugmode/"
+          gh issue close 1
+
+      - name: Save state
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          mkdir -p .github/state
+          echo "${{ steps.diff.outputs.current }}" > .github/state/fdroid-monitor.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/state/fdroid-monitor.txt
+          git diff --cached --quiet || git commit -m "chore: update fdroid monitor state" && git push
