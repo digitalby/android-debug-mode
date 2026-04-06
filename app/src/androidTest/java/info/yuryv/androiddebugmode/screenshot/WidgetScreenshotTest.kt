@@ -1,5 +1,6 @@
 package info.yuryv.androiddebugmode.screenshot
 
+import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
@@ -8,6 +9,7 @@ import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.ByteArrayOutputStream
 import java.io.File
 
 @RunWith(AndroidJUnit4::class)
@@ -15,10 +17,6 @@ class WidgetScreenshotTest {
 
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val device = UiDevice.getInstance(instrumentation)
-
-    // /data/local/tmp is always writable by the shell UID (unlike /sdcard which
-    // requires external storage permissions from the test process's file API).
-    private val diagDir = File("/data/local/tmp/screenshot_diag").also { it.mkdirs() }
 
     @Test
     fun placeWidgetAndCaptureScreenshot() {
@@ -41,44 +39,43 @@ class WidgetScreenshotTest {
 
     private fun openWidgetPicker() {
         longPressHomeScreen()
-        dumpHierarchy("after_long_press")
+        captureScreen("after_long_press")
 
         val widgetsBtn = device.wait(Until.findObject(By.text("Widgets")), 5_000)
             ?: error("'Widgets' button not found after long-pressing the home screen")
         widgetsBtn.click()
         device.waitForIdle(2_000)
 
-        dumpHierarchy("after_widgets_click")
-        dumpAllTexts("after_widgets_click")
+        captureScreen("after_widgets_click")
+        logHierarchy("after_widgets_click")
+        logAllTexts("after_widgets_click")
     }
 
     private fun placeWidget() {
-        // Scroll every visible scrollable container, checking for "Debug Mode" after
-        // each scroll step. This avoids depending on UiScrollable's internal behaviour
-        // and works regardless of how many scrollable views the picker has.
         val target = scrollUntilVisible("Debug Mode", maxSwipes = 15)
             ?: run {
-                dumpHierarchy("not_found")
-                dumpAllTexts("not_found")
+                captureScreen("not_found")
+                logHierarchy("not_found")
+                logAllTexts("not_found")
                 error("App section 'Debug Mode' not found in widget picker after scrolling")
             }
 
-        dumpHierarchy("found_app_section")
+        captureScreen("found_app_section")
 
-        // Tap the app header to expand the widget tile if the picker groups by app.
+        // Tap the app header to expand the widget tile if collapsed.
         target.click()
         device.waitForIdle(1_500)
-        dumpHierarchy("after_app_header_click")
-        dumpAllTexts("after_app_header_click")
+        captureScreen("after_app_header_click")
+        logAllTexts("after_app_header_click")
 
-        // The draggable widget tile: try several selectors in order of specificity.
+        // Draggable widget tile: try selectors in order of specificity.
         val widgetTile =
             device.wait(Until.findObject(By.descContains("Debug Mode Widget")), 2_000)
                 ?: device.findObject(By.textContains("Debug Mode Widget"))
                 ?: device.findObject(By.textContains("Debug Mode"))
                 ?: error("Widget tile not found after expanding app section")
 
-        dumpHierarchy("found_widget_tile")
+        captureScreen("found_widget_tile")
 
         val bounds = widgetTile.visibleBounds
         val dropX = device.displayWidth / 2
@@ -101,23 +98,19 @@ class WidgetScreenshotTest {
     // Scrolling
     // ---------------------------------------------------------------------------
 
-    /**
-     * Scrolls all visible scrollable containers downward until an element matching
-     * [textSubstring] is found, returning it. Returns null if not found after
-     * [maxSwipes] swipe attempts across all containers.
-     */
     private fun scrollUntilVisible(textSubstring: String, maxSwipes: Int): androidx.test.uiautomator.UiObject2? {
         repeat(maxSwipes) {
             val found = device.findObject(By.textContains(textSubstring))
             if (found != null) return found
 
-            // Scroll every scrollable container one notch downward.
             val scrollables = device.findObjects(By.scrollable(true))
-            if (scrollables.isEmpty()) device.swipe(
-                device.displayWidth / 2, device.displayHeight * 2 / 3,
-                device.displayWidth / 2, device.displayHeight / 3,
-                20,
-            )
+            if (scrollables.isEmpty()) {
+                device.swipe(
+                    device.displayWidth / 2, device.displayHeight * 2 / 3,
+                    device.displayWidth / 2, device.displayHeight / 3,
+                    20,
+                )
+            }
             scrollables.forEach { it.scroll(Direction.DOWN, 0.4f) }
             device.waitForIdle(400)
         }
@@ -125,7 +118,7 @@ class WidgetScreenshotTest {
     }
 
     // ---------------------------------------------------------------------------
-    // Diagnostics
+    // Diagnostics (visual via takeScreenshot; text via logcat)
     // ---------------------------------------------------------------------------
 
     private fun longPressHomeScreen() {
@@ -135,19 +128,37 @@ class WidgetScreenshotTest {
         device.waitForIdle(3_000)
     }
 
-    private fun dumpHierarchy(tag: String) {
-        runCatching { device.dumpWindowHierarchy(File(diagDir, "hierarchy_$tag.xml")) }
+    /** Saves a half-resolution screenshot to /sdcard/Pictures/ for CI artifact upload. */
+    private fun captureScreen(tag: String) {
+        runCatching {
+            val dir = File("/sdcard/Pictures").also { it.mkdirs() }
+            device.takeScreenshot(File(dir, "screen_$tag.png"), 0.5f, 80)
+        }
     }
 
-    private fun dumpAllTexts(tag: String) {
+    /** Logs the full UI hierarchy via logcat (tag WDIAG). */
+    private fun logHierarchy(tag: String) {
+        runCatching {
+            val bos = ByteArrayOutputStream()
+            device.dumpWindowHierarchy(bos)
+            // Split into 4000-char chunks so logcat doesn't truncate.
+            val xml = bos.toString("UTF-8")
+            xml.chunked(4000).forEachIndexed { i, chunk ->
+                Log.d("WDIAG", "HIERARCHY[$tag][$i]: $chunk")
+            }
+        }
+    }
+
+    /** Logs every accessible text/desc element via logcat (tag WDIAG). */
+    private fun logAllTexts(tag: String) {
         runCatching {
             val lines = device.findObjects(By.enabled(true)).mapNotNull { el ->
                 val t = el.text?.takeIf { it.isNotBlank() }
                 val d = el.contentDescription?.takeIf { it.isNotBlank() }
-                if (t != null || d != null) "text='$t' desc='$d' cls='${el.className}' pkg='${el.applicationPackage}'"
+                if (t != null || d != null) "t='$t' d='$d' cls=${el.className} pkg=${el.applicationPackage}"
                 else null
             }
-            File(diagDir, "texts_$tag.txt").writeText(lines.joinToString("\n"))
+            Log.d("WDIAG", "TEXTS[$tag]: ${lines.joinToString(" || ")}")
         }
     }
 
