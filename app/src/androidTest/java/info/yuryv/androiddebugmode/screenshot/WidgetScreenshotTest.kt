@@ -1,5 +1,7 @@
 package info.yuryv.androiddebugmode.screenshot
 
+import android.accessibilityservice.GestureDescription
+import android.graphics.Path
 import android.graphics.Point
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -13,6 +15,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 private const val LAUNCHER_PKG = "com.android.launcher3"
 private const val TAG = "WDIAG"
@@ -130,21 +134,94 @@ class WidgetScreenshotTest {
         val widgetTile = widgetText.parent ?: widgetText
 
         captureScreen("found_widget_tile")
-        Log.d(TAG, "WIDGET_TILE: cls=${widgetTile.className} bounds=${widgetTile.visibleBounds}")
+        val bounds = widgetTile.visibleBounds
+        Log.d(TAG, "WIDGET_TILE: cls=${widgetTile.className} bounds=$bounds")
 
-        // Drop in the vertical middle of the screen — clearly below the Google search
-        // bar (top ~8% of display) and well within the empty home-screen grid area.
-        // UiObject2.drag() anchors the gesture to the object centre through the
-        // accessibility tree, which is more reliable than raw coordinate injection.
+        // Use GestureDescription to send a long-press (1 500 ms hold, well above
+        // Launcher3's 400 ms threshold) followed by a slow 2-second drag.  This
+        // goes through the accessibility-service gesture path which guarantees the
+        // hold fires before any movement, unlike UiObject2.drag() whose 500 ms
+        // hold can race with RecyclerView's scroll-detection.
         val dropX = device.displayWidth / 2
-        val dropY = device.displayHeight / 3   // ≈ 800 px on Pixel 6, grid rows 1-2
-        Log.d(TAG, "DRAG: from=${widgetTile.visibleBounds} to=($dropX,$dropY)")
-        widgetTile.drag(Point(dropX, dropY))
+        val dropY = device.displayHeight / 3   // ≈800 px on Pixel 6, middle of grid
+        Log.d(TAG, "GESTURE: hold at (${bounds.centerX()},${bounds.centerY()}) then drag to ($dropX,$dropY)")
+
+        dispatchLongPressDrag(
+            startX = bounds.centerX(),
+            startY = bounds.centerY(),
+            endX = dropX,
+            endY = dropY,
+            holdMs = 1_500L,
+            dragMs = 2_000L,
+        )
         Thread.sleep(3_000)
 
         captureScreen("after_drag")
         logHierarchy("after_drag")
         logAllTexts("after_drag")
+    }
+
+    /**
+     * Dispatches a long-press-then-drag gesture via the accessibility service.
+     * Stroke 1: stay at (startX,startY) for [holdMs] ms (long-press fires well before
+     *           the stroke ends, since the finger doesn't move past TouchSlop).
+     * Stroke 2: slide from (startX,startY) to (endX,endY) over [dragMs] ms.
+     * The two strokes are chained (willContinue=true) into a single touch sequence.
+     */
+    private fun dispatchLongPressDrag(
+        startX: Int,
+        startY: Int,
+        endX: Int,
+        endY: Int,
+        holdMs: Long,
+        dragMs: Long,
+    ) {
+        // A path with a sub-pixel move keeps the gesture provider from rejecting a
+        // zero-length path while remaining well within Android's default TouchSlop.
+        val holdPath = Path().apply {
+            moveTo(startX.toFloat(), startY.toFloat())
+            lineTo(startX.toFloat() + 0.1f, startY.toFloat())
+        }
+        val holdStroke = GestureDescription.StrokeDescription(
+            holdPath,
+            /* startTime= */ 0L,
+            holdMs,
+            /* willContinue= */ true,
+        )
+
+        val dragPath = Path().apply {
+            moveTo(startX.toFloat(), startY.toFloat())
+            lineTo(endX.toFloat(), endY.toFloat())
+        }
+        val dragStroke = holdStroke.continueStroke(
+            dragPath,
+            /* delay= */ 0L,
+            dragMs,
+            /* willContinue= */ false,
+        )
+
+        val gesture = GestureDescription.Builder()
+            .addStroke(holdStroke)
+            .addStroke(dragStroke)
+            .build()
+
+        val latch = CountDownLatch(1)
+        instrumentation.uiAutomation.dispatchGesture(
+            gesture,
+            object : GestureDescription.Callback() {
+                override fun onCompleted(g: GestureDescription) {
+                    Log.d(TAG, "GESTURE_COMPLETED")
+                    latch.countDown()
+                }
+                override fun onCancelled(g: GestureDescription) {
+                    Log.d(TAG, "GESTURE_CANCELLED")
+                    latch.countDown()
+                }
+            },
+            null,
+        )
+        val dispatched = latch.await(holdMs + dragMs + 5_000, TimeUnit.MILLISECONDS)
+        Log.d(TAG, "GESTURE_AWAIT: dispatched=$dispatched")
     }
 
     private fun waitForGlanceRender() {
