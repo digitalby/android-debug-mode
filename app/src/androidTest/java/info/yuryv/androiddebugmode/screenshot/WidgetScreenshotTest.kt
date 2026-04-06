@@ -120,9 +120,12 @@ class WidgetScreenshotTest {
 
         val bounds = widgetTile.visibleBounds
         val dropX = device.displayWidth / 2
-        val dropY = device.displayHeight / 3
-        device.drag(bounds.centerX(), bounds.centerY(), dropX, dropY, 60)
-        device.waitForIdle(2_000)
+        // Drop near the top of the screen so the gesture clears the picker area.
+        // The picker occupies most of the screen; the drag must travel far enough
+        // upward for Launcher3 to detect placement on the home screen beneath.
+        val dropY = device.displayHeight / 8
+        device.drag(bounds.centerX(), bounds.centerY(), dropX, dropY, 120)
+        device.waitForIdle(3_000)
     }
 
     private fun waitForGlanceRender() {
