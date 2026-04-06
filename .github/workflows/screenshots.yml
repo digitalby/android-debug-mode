@@ -49,6 +49,7 @@ jobs:
             -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
+            set -e
             adb shell settings put global adb_enabled 1
             adb shell settings put global adb_wifi_enabled 1
             adb shell settings put global heads_up_notifications_enabled 0

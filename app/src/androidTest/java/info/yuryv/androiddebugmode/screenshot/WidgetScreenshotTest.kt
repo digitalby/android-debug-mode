@@ -55,9 +55,13 @@ class WidgetScreenshotTest {
         ) ?: device.wait(Until.findObject(By.text("Widgets")), 5_000)
             ?: error("'Widgets' button not found after long-pressing the home screen")
 
-        val cx = widgetsItem.visibleBounds.centerX()
-        val cy = widgetsItem.visibleBounds.centerY()
-        device.click(cx, cy)
+        val bounds = widgetsItem.visibleBounds
+        Log.d(TAG, "CLICK_TARGET: cls=${widgetsItem.className} pkg=${widgetsItem.applicationPackage} bounds=$bounds clickable=${widgetsItem.isClickable}")
+        captureScreen("before_click")
+        logAllTexts("before_click")
+
+        device.click(bounds.centerX(), bounds.centerY())
+        captureScreen("after_click_immediate")
 
         // Wait for the Launcher3 widget picker (a scrollable RecyclerView) to appear.
         device.wait(Until.hasObject(By.pkg(LAUNCHER_PKG).scrollable(true)), 8_000)
