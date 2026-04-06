@@ -46,23 +46,22 @@ class WidgetScreenshotTest {
         longPressHomeScreen()
         captureScreen("after_long_press")
 
-        val widgetsBtn = device.wait(Until.findObject(By.text("Widgets")), 5_000)
+        // The popup items are TextViews (not clickable themselves); their parent
+        // container holds the click listener. Find the clickable ancestor first;
+        // fall back to a raw coordinate tap, which propagates through the hierarchy.
+        val widgetsItem = device.wait(
+            Until.findObject(By.clickable(true).hasDescendant(By.text("Widgets"))),
+            5_000,
+        ) ?: device.wait(Until.findObject(By.text("Widgets")), 5_000)
             ?: error("'Widgets' button not found after long-pressing the home screen")
-        widgetsBtn.click()
 
-        // Wait for the Launcher3 widget picker to be in the foreground —
-        // not just for idle, because a heads-up notification may appear
-        // and delay the picker transition.
-        val pickerVisible = device.wait(
-            Until.hasObject(By.pkg(LAUNCHER_PKG).scrollable(true)),
-            8_000,
-        )
+        val cx = widgetsItem.visibleBounds.centerX()
+        val cy = widgetsItem.visibleBounds.centerY()
+        device.click(cx, cy)
 
-        // If a notification shade or other overlay opened on top, close it.
-        if (!pickerVisible) {
-            device.pressBack()
-            device.waitForIdle(1_000)
-        }
+        // Wait for the Launcher3 widget picker (a scrollable RecyclerView) to appear.
+        device.wait(Until.hasObject(By.pkg(LAUNCHER_PKG).scrollable(true)), 8_000)
+        device.waitForIdle(1_000)
 
         captureScreen("after_widgets_click")
         logHierarchy("after_widgets_click")
