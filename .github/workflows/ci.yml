@@ -70,7 +70,6 @@ jobs:
           KEYSTORE_BASE64: op://GitHub OSS/Android Release Keystore Android Signing/keystore_base64
           STORE_PASSWORD: op://GitHub OSS/Android Release Keystore Android Signing/store_password
           KEY_ALIAS: op://GitHub OSS/Android Release Keystore Android Signing/key_alias
-          KEY_PASSWORD: op://GitHub OSS/Android Release Keystore Android Signing/key_password
 
       - name: Decode keystore
         run: echo "$KEYSTORE_BASE64" | base64 --decode > "${{ github.workspace }}/release.jks"
