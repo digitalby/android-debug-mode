@@ -63,8 +63,14 @@ class WidgetScreenshotTest {
         device.click(bounds.centerX(), bounds.centerY())
         captureScreen("after_click_immediate")
 
+        // The "Serial console enabled" persistent notification on emulators can expand
+        // the notification shade and cover the widget picker. Collapse it immediately.
+        Thread.sleep(1_500)
+        shell("cmd statusbar collapse")
+        Thread.sleep(500)
+
         // Wait for the Launcher3 widget picker (a scrollable RecyclerView) to appear.
-        device.wait(Until.hasObject(By.pkg(LAUNCHER_PKG).scrollable(true)), 8_000)
+        device.wait(Until.hasObject(By.pkg(LAUNCHER_PKG).scrollable(true)), 6_000)
         device.waitForIdle(1_000)
 
         captureScreen("after_widgets_click")
