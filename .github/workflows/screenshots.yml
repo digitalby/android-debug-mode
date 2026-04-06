@@ -6,6 +6,7 @@ on:
     branches: [feature/real-screenshots]
     paths:
       - 'app/src/main/java/**'
+      - 'app/src/main/res/**'
       - 'app/src/androidTest/**'
 
 jobs:
@@ -50,8 +51,13 @@ jobs:
           script: |
             adb shell settings put global adb_enabled 1
             adb shell settings put global adb_wifi_enabled 1
+            adb shell settings put global heads_up_notifications_enabled 0
             adb install -t -r app/build/outputs/apk/debug/app-debug.apk
             adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell am force-stop com.android.launcher3
+            sleep 3
+            adb shell input keyevent KEYCODE_HOME
+            sleep 3
             adb shell am instrument -w -e class info.yuryv.androiddebugmode.screenshot.WidgetScreenshotTest info.yuryv.androiddebugmode.test/androidx.test.runner.AndroidJUnitRunner
             adb pull /sdcard/Pictures/01_widget.png fastlane/metadata/android/en-US/images/phoneScreenshots/01_widget.png || true
             mkdir -p diagnostics

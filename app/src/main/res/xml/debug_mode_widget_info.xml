@@ -11,4 +11,5 @@
     android:resizeMode="horizontal|vertical"
     android:initialLayout="@layout/glance_default_loading_layout"
     android:previewImage="@mipmap/ic_launcher"
-    android:description="@string/widget_description" />
+    android:description="@string/widget_description"
+    android:label="@string/app_name" />
