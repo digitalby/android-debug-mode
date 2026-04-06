@@ -53,23 +53,30 @@ class WidgetScreenshotTest {
         val widgetsText = device.wait(Until.findObject(By.text("Widgets").pkg(LAUNCHER_PKG)), 5_000)
             ?: error("'Widgets' text not found in popup after long-pressing the home screen")
 
-        val bounds = widgetsText.visibleBounds
-        Log.d(TAG, "CLICK_TARGET: cls=${widgetsText.className} pkg=${widgetsText.applicationPackage} bounds=$bounds")
+        val cx = widgetsText.visibleBounds.centerX()
+        val cy = widgetsText.visibleBounds.centerY()
+        Log.d(TAG, "CLICK_TARGET: cls=${widgetsText.className} pkg=${widgetsText.applicationPackage} bounds=${widgetsText.visibleBounds}")
         captureScreen("before_click")
 
-        // Use shell input tap: goes through the native input pipeline and is delivered
-        // to the window under the touch coordinates, selecting the correct row.
-        shell("input tap ${bounds.centerX()} ${bounds.centerY()}")
-        captureScreen("after_click_immediate")
-
-        // The "Serial console enabled" persistent notification on emulators can expand
-        // the notification shade and cover the widget picker. Collapse it immediately.
-        Thread.sleep(1_500)
-        shell("cmd statusbar collapse")
-        Thread.sleep(500)
-
-        // Wait for the Launcher3 widget picker (a scrollable RecyclerView) to appear.
-        device.wait(Until.hasObject(By.pkg(LAUNCHER_PKG).scrollable(true)), 6_000)
+        // Retry the tap up to 3 times. The popup remains open between attempts so
+        // retrying is safe. Each attempt collapses the notification shade immediately
+        // after the tap so it cannot cover the widget picker.
+        val pickerVisible = (1..3).any { attempt ->
+            shell("input tap $cx $cy")
+            captureScreen("after_tap_attempt_$attempt")
+            Thread.sleep(1_000)
+            shell("cmd statusbar collapse")
+            Thread.sleep(300)
+            val appeared = device.wait(Until.hasObject(By.pkg(LAUNCHER_PKG).scrollable(true)), 3_000) == true
+            Log.d(TAG, "TAP_ATTEMPT[$attempt]: pickerAppeared=$appeared")
+            appeared
+        }
+        if (!pickerVisible) {
+            captureScreen("picker_not_opened")
+            logHierarchy("picker_not_opened")
+            logAllTexts("picker_not_opened")
+            error("Widget picker did not open after 3 tap attempts on 'Widgets' popup item")
+        }
         device.waitForIdle(1_000)
 
         captureScreen("after_widgets_click")
