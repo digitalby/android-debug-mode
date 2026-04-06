@@ -116,14 +116,20 @@ class WidgetScreenshotTest {
         captureScreen("after_app_header_click")
         logAllTexts("after_app_header_click")
 
-        // Draggable widget tile: try selectors in order of specificity.
-        val widgetTile =
-            device.wait(Until.findObject(By.descContains("Debug Mode Widget")), 2_000)
-                ?: device.findObject(By.textContains("Debug Mode Widget"))
-                ?: device.findObject(By.textContains("Debug Mode").pkg(LAUNCHER_PKG))
-                ?: error("Widget tile not found after expanding app section")
+        // Draggable widget tile. Launcher3 uses desc="Debug Mode widget" (lowercase w)
+        // on the title TextView inside the WidgetCell. Navigate up to the WidgetCell
+        // parent so the drag starts on the correct container and triggers Launcher3's
+        // drag-and-drop mode rather than being ignored by the child TextView.
+        val widgetText =
+            device.wait(Until.findObject(By.desc("Debug Mode widget").pkg(LAUNCHER_PKG)), 3_000)
+                ?: device.findObject(By.desc("Debug Mode widget"))
+                ?: error("Widget tile not found (desc='Debug Mode widget') after expanding app section")
+
+        // parent is the WidgetCell container — the actual draggable view.
+        val widgetTile = widgetText.parent ?: widgetText
 
         captureScreen("found_widget_tile")
+        Log.d(TAG, "WIDGET_TILE: cls=${widgetTile.className} bounds=${widgetTile.visibleBounds}")
 
         val bounds = widgetTile.visibleBounds
         val dropX = device.displayWidth / 2
