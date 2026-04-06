@@ -21,23 +21,13 @@ jobs:
         id: mr
         run: |
           MR_URL="https://gitlab.com/api/v4/projects/fdroid%2Ffdroiddata/merge_requests/36002"
-          MR=$(curl -sf "$MR_URL")
+          MR=$(curl -s "$MR_URL")
           STATE=$(echo "$MR" | jq -r '.state')
           UPDATED=$(echo "$MR" | jq -r '.updated_at')
+          MERGED=$(echo "$MR" | jq -r '.merged_at // empty')
           echo "state=$STATE" >> "$GITHUB_OUTPUT"
           echo "updated=$UPDATED" >> "$GITHUB_OUTPUT"
-
-          NOTES_URL="${MR_URL}/notes?sort=desc&per_page=5"
-          NOTES=$(curl -sf "$NOTES_URL")
-          LATEST_NOTE_DATE=$(echo "$NOTES" | jq -r '.[0].created_at // empty')
-          LATEST_NOTE_AUTHOR=$(echo "$NOTES" | jq -r '.[0].author.username // empty')
-          LATEST_NOTE_BODY=$(echo "$NOTES" | jq -r '.[0].body // empty' | head -c 500)
-          echo "latest_note_date=$LATEST_NOTE_DATE" >> "$GITHUB_OUTPUT"
-          echo "latest_note_author=$LATEST_NOTE_AUTHOR" >> "$GITHUB_OUTPUT"
-          EOF_MARKER=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-          echo "latest_note_body<<$EOF_MARKER" >> "$GITHUB_OUTPUT"
-          echo "$LATEST_NOTE_BODY" >> "$GITHUB_OUTPUT"
-          echo "$EOF_MARKER" >> "$GITHUB_OUTPUT"
+          echo "merged=$MERGED" >> "$GITHUB_OUTPUT"
 
       - name: Check F-Droid index
         id: fdroid
@@ -58,7 +48,7 @@ jobs:
           if [ -f .github/state/fdroid-monitor.txt ]; then
             PREV=$(cat .github/state/fdroid-monitor.txt)
           fi
-          CURRENT="mr=${{ steps.mr.outputs.state }}|note=${{ steps.mr.outputs.latest_note_date }}|live=${{ steps.fdroid.outputs.live }}"
+          CURRENT="mr=${{ steps.mr.outputs.state }}|updated=${{ steps.mr.outputs.updated }}|live=${{ steps.fdroid.outputs.live }}"
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           if [ "$PREV" = "$CURRENT" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -74,8 +64,6 @@ jobs:
           gh issue comment 1 --body "**F-Droid monitor** ($(date -u +%Y-%m-%d))
 
           MR state: \`${{ steps.mr.outputs.state }}\` (updated ${{ steps.mr.outputs.updated }})
-          Latest comment by \`${{ steps.mr.outputs.latest_note_author }}\`:
-          > ${{ steps.mr.outputs.latest_note_body }}
 
           [View MR](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/36002)"
 
