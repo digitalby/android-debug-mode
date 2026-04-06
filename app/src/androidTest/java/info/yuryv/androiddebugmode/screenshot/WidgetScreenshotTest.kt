@@ -159,7 +159,8 @@ class WidgetScreenshotTest {
     private fun takeScreenshot() {
         val out = File("/sdcard/Pictures/01_widget.png")
         out.parentFile?.mkdirs()
-        device.takeScreenshot(out, 1.0f, 100)
+        val ok = device.takeScreenshot(out, 1.0f, 100)
+        check(ok) { "takeScreenshot returned false — file not written: $out" }
     }
 
     // ---------------------------------------------------------------------------
