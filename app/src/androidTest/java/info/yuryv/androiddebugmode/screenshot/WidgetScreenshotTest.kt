@@ -151,7 +151,9 @@ class WidgetScreenshotTest {
     }
 
     private fun waitForGlanceRender() {
-        Thread.sleep(3_000)
+        // Glance pushes RemoteViews asynchronously. 6 s gives enough time for
+        // provideGlance() to run and for the AppWidgetManager to deliver the update.
+        Thread.sleep(6_000)
     }
 
     private fun takeScreenshot() {
