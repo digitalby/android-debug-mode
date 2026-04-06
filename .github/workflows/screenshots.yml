@@ -62,7 +62,7 @@ jobs:
             adb shell cmd statusbar collapse
             sleep 1
             adb shell am instrument -w -e class info.yuryv.androiddebugmode.screenshot.WidgetScreenshotTest info.yuryv.androiddebugmode.test/androidx.test.runner.AndroidJUnitRunner
-            adb pull /sdcard/Pictures/01_widget.png fastlane/metadata/android/en-US/images/phoneScreenshots/01_widget.png || true
+            adb pull /sdcard/Pictures/01_widget.png fastlane/metadata/android/en-US/images/phoneScreenshots/01_widget.png
             mkdir -p diagnostics
             adb pull /sdcard/Pictures/ diagnostics/ || true
             adb logcat -d -s WDIAG:D > diagnostics/logcat_diag.txt 2>&1 || true
