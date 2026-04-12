@@ -1,0 +1,1 @@
+Build change only: disabled AGP's dependency metadata signing block so the release APK is accepted by F-Droid's scanner for reproducible builds. No user-visible changes.
