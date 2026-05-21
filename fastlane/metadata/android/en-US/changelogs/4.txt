@@ -1,0 +1,1 @@
+Build fix only: the v1.1.1 attempt to strip AGP's dependency metadata signing block used the wrong Gradle property name and had no effect, so the released APK still failed F-Droid's scanner. This release moves the setting into the dependenciesInfo DSL, verified to remove the block. No user-visible changes.
