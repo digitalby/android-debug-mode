@@ -1,5 +1,8 @@
 # Debug Mode Widget
 
+[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/info.yuryv.androiddebugmode/)
+
+
 A minimal Android home screen widget that shows USB and wireless ADB debugging status at a glance and taps through to Developer Options.
 
 ![CI](https://github.com/digitalby/android-debug-mode/actions/workflows/ci.yml/badge.svg)
